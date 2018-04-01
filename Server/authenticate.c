@@ -115,8 +115,9 @@ void check_password (status_st status, NODE *user, char password[])
   switch (status) {
     case ST_PASSWD:
       if ((newpasshash = validate_password(user->name, password)) != NULL) {
-        user->hash = strdup(newpasshash);
         user->status = ST_CHAT;
+        user->hash = strdup(newpasshash);
+        user->login_time = time(NULL);
         sprintf(msg, "Welcome, %s\n", user->name);
         send_to_obuf(user, msg);
       } else {
@@ -128,6 +129,7 @@ void check_password (status_st status, NODE *user, char password[])
       if ((newpasshash = make_password(user->name, password)) != NULL){
         user->status = ST_CHAT;
         user->hash = strdup(newpasshash);
+        user->login_time = time(NULL);
         sprintf(msg, "[Account created successfully]\nWelcome, %s\n", user->name);
         send_to_obuf(user, msg);
       } else {

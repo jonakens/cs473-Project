@@ -126,6 +126,7 @@ NODE *make_node(int desc)
   p->addr = NULL;
   p->ibuf  = NULL;
   p->obuf = NULL;
+  p->login_time = 0;
   p->link = NULL;
   return p;
 }
@@ -348,7 +349,7 @@ void process_stuff (int sock)
       case T_NEW:
         command_handler(p, tok);
         continue;
-      case T_LIST:
+      case T_WHO:
         command_handler(p, tok);
         continue;
       case T_OTHER:
@@ -444,7 +445,7 @@ token_t special_check (char token[])
   else if (strcmp(token, "/login") == 0) return T_LOGIN;
   else if (strcmp(token, "/logout") == 0) return T_LOGOUT;
   else if (strcmp(token, "/new") == 0) return T_NEW;
-  else if (strcmp(token, "/list") == 0) return T_LIST;
+  else if (strcmp(token, "/who") == 0) return T_WHO;
   else return T_OTHER;
 }
 

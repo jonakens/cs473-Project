@@ -50,6 +50,7 @@ typedef struct node {
   char *addr;
   MESS *ibuf;
   MESS *obuf;
+  time_t login_time;
   struct node *link;
 } NODE;
 
@@ -59,7 +60,7 @@ typedef enum {
   T_LOGIN,
   T_LOGOUT,
   T_NEW,
-  T_LIST,
+  T_WHO,
   T_OTHER
 } token_t;
 
