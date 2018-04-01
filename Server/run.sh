@@ -1,4 +1,4 @@
 while true; do
-    ./server
-    sleep 60
+  ./server
+  sleep 60
 done
