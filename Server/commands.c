@@ -6,8 +6,8 @@ void who_is_online (NODE *user);
 
 void command_handler(NODE *user, token_t cmd)
 {
-  char msg[LONGSTR];
-  memset(msg, 0, LONGSTR);
+  char msg[K];
+  memset(msg, 0, K);
 
   switch (cmd) {
     case T_QUIT:
@@ -59,7 +59,7 @@ void command_handler(NODE *user, token_t cmd)
 void who_is_online (NODE *user)
 {
   NODE *p;
-  char list[LONGSTR] = "\n";
+  char list[K] = "\n";
   char person[K];
   int counter = 0;
 

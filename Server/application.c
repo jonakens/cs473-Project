@@ -286,9 +286,7 @@ void read_stuff (int sock)
 
   int nbytes;
   char buffer[LONGSTR];
-  char msg[LONGSTR];
   memset(buffer, 0, LONGSTR);
-  memset(msg, 0, LONGSTR);
 
   for(p = head; p != NULL; p = p->link){
     if(FD_ISSET(p->desc, &iset)){
@@ -298,11 +296,10 @@ void read_stuff (int sock)
       if(nbytes <= 0){
         p->status = ST_BAD;
         continue;
-      } else if (nbytes >= LONGSTR) {
-        memset(buffer, 0, LONGSTR);
-        memset(msg, 0, LONGSTR);
-        strcpy(msg, "[BUFFER OVERFLOW]\n");
-        send_to_obuf(p, msg);
+      } else if (nbytes >= LONGSTR-100) {        //check if buffer overflow
+        memset(buffer, 0, LONGSTR);              //why 100? bcs we may need to concat user info
+        strcpy(buffer, "[BUFFER OVERFLOW]\n");
+        send_to_obuf(p, buffer);
         continue;
       } else {
         buffer[nbytes-1] = '\0';
@@ -358,9 +355,9 @@ void process_stuff (int sock)
 
     switch (p->status) {
       case ST_MENU:
-        memset(msg, 0, LONGSTR);
-        sprintf(msg, "[Unknown Command]\n");
-        send_to_obuf(p, msg);
+        memset(buffer, 0, LONGSTR);
+        sprintf(buffer, "[Unknown Command]\n");
+        send_to_obuf(p, buffer);
         continue;
       case ST_NEWUSR:
         check_username(p->status, p, buffer);
@@ -376,7 +373,7 @@ void process_stuff (int sock)
         continue;
       case ST_CHAT:
         memset(msg, 0, LONGSTR);
-        sprintf(msg, "\n%s (%s): %s\n", p->name, p->addr, buffer);
+        sprintf(msg, "\n[%s | %s] %s\n", p->name, p->addr, buffer);
         for(q = head ; q != NULL ; q = q->link) {
           if(q->status != ST_CHAT || p == q) continue;
           send_to_obuf(q, msg);
@@ -392,6 +389,9 @@ void remove_stuff (int sock)
   while(head && head->status == ST_BAD){
     p = head;
     head = head->link;
+    free(p->name);
+    free(p->hash);
+    free(p->addr);
     free_ibuf(p);
     free_obuf(p);
     close(p->desc);
@@ -405,6 +405,9 @@ void remove_stuff (int sock)
     q = p->link;
     if(q && q->status == ST_BAD){
       p->link = q->link;
+      free(q->name);
+      free(q->hash);
+      free(q->addr);
       free_ibuf(q);
       free_obuf(q);
       close(q->desc);

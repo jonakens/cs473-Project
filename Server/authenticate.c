@@ -11,8 +11,8 @@ extern sqlite3 *db;
 
 void check_username (status_st status, NODE *user, char username[])
 {
-  char msg[LONGSTR];
-  memset(msg, 0, LONGSTR);
+  char msg[K];
+  memset(msg, 0, K);
 
   if (strlen(username) < MIN || strlen(username) > MAX) {
     if (status == ST_LOGIN) {

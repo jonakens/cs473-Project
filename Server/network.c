@@ -28,8 +28,8 @@ int main(int argc, char *argv[])
     read_stuff(s);                 //getting user input
     process_stuff(s);              //process the user input
     remove_stuff(s);               //remove anyone with ST_BAD status
-    usleep(100);
-    if(time(0) - t >= 5){
+    usleep(100000);
+    if(time(0) - t >= 30){
       t = time(0);
       fprintf(stderr,"%d users connected.\n", count_users());
     }
