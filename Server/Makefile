@@ -1,7 +1,6 @@
-
 CC = gcc
 CFLAGS = -g
-LIBS = -lcrypt
+LIBS = -lcrypt -lsqlite3
 OBJS = network.o application.o authenticate.o commands.o
 
 server: $(OBJS)
@@ -15,4 +14,4 @@ authenticate.o: authenticate.c server.h
 commands.o: commands.c server.h
 	$(CC) $(CFLAGS) -c commands.c
 clean:
-	rm -f *.o server
+	rm -f *.o *~ server
