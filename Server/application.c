@@ -13,9 +13,9 @@ void set_priority()
   priority = 19;
 
   pid_t who;
-  who = getpid();
+  who = getpid(); //get process id
 
-  int ret = setpriority(which, who, priority);
+  int ret = setpriority(which, who, priority); //set the process priority
   if(ret < 0){
     fprintf(stderr, "[Priority] Priority not set successfuly");
     exit(1);
@@ -29,7 +29,7 @@ void set_priority()
 */
 void init_database ()
 {
-  int ret = sqlite3_open("server.db", &db);
+  int ret = sqlite3_open("server.db", &db); //open sqlite3 database
   if (ret != SQLITE_OK) {
     fprintf(stderr, "[Database Open] %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
@@ -39,29 +39,41 @@ void init_database ()
   }
 }
 
+/*
+  initialize socket for communication, binds socket with the server address
+  and listen for connection
+*/
 int init_socket(int port)
 {
+  //clearing up the struct, then fill in the info about the server
   struct sockaddr_in sa;
   memset(&sa, 0, sizeof(sa));
   sa.sin_family = AF_INET;
   sa.sin_port = htons(port);
 
-  int s = socket(AF_INET, SOCK_STREAM, 0);
+  int s = socket(AF_INET, SOCK_STREAM, 0); //socket initialization
   if (s < 0) {
     perror("[Socket Initialization]");
     exit(1);
   }
 
+  //bind socket with server information
   if(bind(s, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
     perror("[Binding]");
     close(s);
     exit(1);
   }
 
+  //listen up to 256 connections
   listen(s, 256);
   return s;
 }
 
+/*
+  handle incoming connection request
+  get client information
+  set up a node to keep client information
+*/
 void open_stuff(int s)
 {
   struct timeval zero;
@@ -76,18 +88,21 @@ void open_stuff(int s)
   if(!FD_ISSET(s,&iset))
     return;
 
+  //handle new connection request
   int desc = new_connection(s);
   if(desc < 0)
     return;
 
   struct sockaddr_in sock;
   int size = sizeof(sock);
+  //get client info
   if (getpeername(desc, (struct sockaddr *)&sock, &size) < 0) {
     perror("[Get Peer Name]");
     close(desc);
     return;
   }
 
+  //set up a node (part of linked list) to keep client info
   NODE *p;
   if(head == NULL){
     head = make_node(desc);
@@ -97,10 +112,14 @@ void open_stuff(int s)
     head = p;
   }
 
+  //fill in client ip info to the node
   head->addr = strdup(inet_ntoa(sock.sin_addr));
   print_help(head);
 }
 
+/*
+  handle new connection request
+*/
 int new_connection(int s)
 {
   struct sockaddr isa;
@@ -115,6 +134,10 @@ int new_connection(int s)
   return t;
 }
 
+/*
+  allocate a struct to contain client information
+  as a part of linked list and initialize it
+*/
 NODE *make_node(int desc)
 {
   NODE *p;
@@ -131,6 +154,9 @@ NODE *make_node(int desc)
   return p;
 }
 
+/*
+  allocate a message node as a part of linked list ibuf or obuf
+*/
 MESS *make_message ()
 {
   MESS *ms;
@@ -140,6 +166,11 @@ MESS *make_message ()
   return ms;
 }
 
+/*
+  send message to the node output buffer
+  output buffer is a temporary holder
+  before the message is flushed to the user
+*/
 void send_to_obuf (NODE *target, char message[])
 {
   if (target->obuf == NULL) {
@@ -147,7 +178,8 @@ void send_to_obuf (NODE *target, char message[])
     strcpy((target->obuf)->message, message);
   } else {
     MESS *end;
-    for (end = target->obuf; end != NULL; end = end->messlink) {}
+    //iterating the linked list before putting the message at the end of the list
+    for (end = target->obuf; end->messlink != NULL; end = end->messlink) {}
 
     MESS *new;
     new = make_message();
@@ -157,6 +189,11 @@ void send_to_obuf (NODE *target, char message[])
   }
 }
 
+/*
+  send message to the node input buffer
+  input buffer is a temporary holder
+  before the message is processed by the server
+*/
 void send_to_ibuf (NODE *target, char message[])
 {
   if (target->ibuf == NULL) {
@@ -164,8 +201,9 @@ void send_to_ibuf (NODE *target, char message[])
     strcpy((target->ibuf)->message, message);
   } else {
     MESS *end;
-    for (end = target->ibuf; end != NULL; end = end->messlink) {
-    }
+    //iterating the linked list before putting the message at the end of the list
+    for (end = target->ibuf; end->messlink != NULL; end = end->messlink) {}
+
     MESS *new;
     new = make_message();
     strcpy(new->message, message);
@@ -174,6 +212,10 @@ void send_to_ibuf (NODE *target, char message[])
   }
 }
 
+/*
+  message flusher
+  send the message to the client fd
+*/
 void write_stuff (int sock)
 {
   struct timeval zero;
@@ -211,6 +253,12 @@ void write_stuff (int sock)
   }
 }
 
+/*
+  remove the head of input buffer
+  used after message has been processed by the server
+  or when freeing the allocation bcs user/client is
+  in ST_BAD
+*/
 void remove_ibuf (NODE *nd)
 {
   MESS *msp;
@@ -232,6 +280,12 @@ void remove_ibuf (NODE *nd)
   }
 }
 
+/*
+  remove the head of output buffer
+  used after message has been flushed to the users
+  or when freeing the allocation bcs user/client is
+  in ST_BAD
+*/
 void remove_obuf (NODE *nd)
 {
   MESS *msp;
@@ -253,6 +307,9 @@ void remove_obuf (NODE *nd)
   }
 }
 
+/*
+  clearing up the whole input buffer linked list
+*/
 void free_ibuf (NODE *nd)
 {
   while ((nd->ibuf) != NULL) {
@@ -260,6 +317,9 @@ void free_ibuf (NODE *nd)
   }
 }
 
+/*
+  clearing up the whole output buffer linked list
+*/
 void free_obuf (NODE *nd)
 {
   while ((nd->obuf) != NULL) {
@@ -267,6 +327,10 @@ void free_obuf (NODE *nd)
   }
 }
 
+/*
+  reading user input and error checking of the user has overflown the buffer
+  move user input into the input buffer ibuf for processing
+*/
 void read_stuff (int sock)
 {
   struct timeval zero;
@@ -301,8 +365,12 @@ void read_stuff (int sock)
         strcpy(buffer, "[BUFFER OVERFLOW]\n");
         send_to_obuf(p, buffer);
         continue;
-      } else {
+      }
+
+      if (buffer[nbytes-1] == '\n') {
         buffer[nbytes-1] = '\0';
+      } else {
+        buffer[nbytes] = '\0';
       }
 
       if (strlen(buffer) == 0) {
@@ -314,6 +382,10 @@ void read_stuff (int sock)
   }
 }
 
+/*
+  user input processing
+  help manage user command and text input
+*/
 void process_stuff (int sock)
 {
   NODE *p, *q;
@@ -321,33 +393,52 @@ void process_stuff (int sock)
   char msg[LONGSTR];
   token_t tok;
 
-  memset(buffer, 0, LONGSTR);
-  memset(msg, 0, LONGSTR);
-
   for(p = head; p != NULL; p = p->link) {
     if(p->status == ST_BAD || p->ibuf == NULL) continue;
 
     memset(buffer, 0, LONGSTR);
+    memset(msg, 0, LONGSTR);
     strcpy(buffer, (p->ibuf)->message);
     remove_ibuf(p);
-    switch((tok = lex_string(buffer))) {
+    switch((tok = lex_string(buffer, msg))) {
       case T_QUIT:
-        command_handler(p, tok);
+        command_handler(p, tok, NULL);
         continue;
       case T_HELP:
-        command_handler(p, tok);
-        continue;
-      case T_LOGIN:
-        command_handler(p, tok);
-        continue;
-      case T_LOGOUT:
-        command_handler(p, tok);
-        continue;
-      case T_NEW:
-        command_handler(p, tok);
+        command_handler(p, tok, NULL);
         continue;
       case T_WHO:
-        command_handler(p, tok);
+        command_handler(p, tok, NULL);
+        continue;
+      case T_LOGOUT:
+        command_handler(p, tok, NULL);
+        continue;
+      case T_LOGIN:
+        if (strlen(msg) > 0) {
+          command_handler(p, tok, msg);
+        } else {
+          memset(msg, 0, LONGSTR);
+          sprintf(msg, "[No argument]\n");
+          send_to_obuf(p, msg);
+        }
+        continue;
+      case T_REGISTER:
+        if (strlen(msg) > 0) {
+          command_handler(p, tok, msg);
+        } else {
+          memset(msg, 0, LONGSTR);
+          sprintf(msg, "[No argument]\n");
+          send_to_obuf(p, msg);
+        }
+        continue;
+      case T_PRIVATE:
+        if (strlen(msg) > 0) {
+          command_handler(p, tok, msg);
+        } else {
+          memset(msg, 0, LONGSTR);
+          sprintf(msg, "[No argument]\n");
+          send_to_obuf(p, msg);
+        }
         continue;
       case T_OTHER:
         break;
@@ -359,21 +450,18 @@ void process_stuff (int sock)
         sprintf(buffer, "[Unknown Command]\n");
         send_to_obuf(p, buffer);
         continue;
-      case ST_NEWUSR:
-        check_username(p->status, p, buffer);
-        continue;
-      case ST_NEWPWD:
-        check_password(p->status, p, buffer);
-        continue;
       case ST_LOGIN:
-        check_username(p->status, p, buffer);
+        check_credentials(p->status, p, buffer);
         continue;
-      case ST_PASSWD:
-        check_password(p->status, p, buffer);
+      case ST_REGISTER:
+        check_credentials(p->status, p, buffer);
+        continue;
+      case ST_PRIVATE:
+        private_message(p, buffer);
         continue;
       case ST_CHAT:
         memset(msg, 0, LONGSTR);
-        sprintf(msg, "\n[%s | %s] %s\n", p->name, p->addr, buffer);
+        sprintf(msg, "\n[%s:%s] %s\n", p->name, p->addr, buffer);
         for(q = head ; q != NULL ; q = q->link) {
           if(q->status != ST_CHAT || p == q) continue;
           send_to_obuf(q, msg);
@@ -418,37 +506,53 @@ void remove_stuff (int sock)
   }
 }
 
-token_t lex_string (char line[])
+token_t lex_string (char line[], char args[])
 {
-  int pos = 0, idx = 0;
-  char c = line[pos];
-  char token[LONGSTR];
-  memset(token, 0, LONGSTR);
+  int lp = 0, ap = 0;
+  char c = line[lp];
 
-  while (c != '\0') {
-    if (c == ' ' || c == '\t') {
-      if (strcmp(token, "") == 0) {
-        c = line[++pos];
-        continue;
-      } else {
-        return special_check(token);
-      }
-    }
-    token[idx++] = line[pos];
-    c = line[++pos];
+  while (c == ' ' || c == '\t') c = line[++lp];
+
+  while (c != '\0' && c != ' ' && c != '\t') {
+    args[ap++] = c;
+    c = line[++lp];
   }
 
-  return special_check(token);
+  args[ap] = '\0';
+  token_t tok;
+
+  switch ((tok = special_check(args))) {
+    case T_OTHER: return tok;
+    case T_QUIT: return tok;
+    case T_HELP: return tok;
+    case T_WHO: return tok;
+    case T_LOGOUT: return tok;
+    case T_LOGIN:
+    case T_REGISTER:
+    case T_PRIVATE:
+      ap = 0;
+      memset(args, 0, LONGSTR);
+      while (c == ' ' || c == '\t') c = line[++lp];
+
+      while (c != '\0') {
+        args[ap++] = c;
+        c = line[++lp];
+      }
+
+      args[ap] = '\0';
+      return tok;
+  }
 }
 
 token_t special_check (char token[])
 {
   if (strcmp(token, "/quit") == 0) return T_QUIT;
   else if (strcmp(token, "/help") == 0) return T_HELP;
-  else if (strcmp(token, "/login") == 0) return T_LOGIN;
-  else if (strcmp(token, "/logout") == 0) return T_LOGOUT;
-  else if (strcmp(token, "/new") == 0) return T_NEW;
   else if (strcmp(token, "/who") == 0) return T_WHO;
+  else if (strcmp(token, "/logout") == 0) return T_LOGOUT;
+  else if (strcmp(token, "/login") == 0) return T_LOGIN;
+  else if (strcmp(token, "/register") == 0) return T_REGISTER;
+  else if (strcmp(token, "/private") == 0) return T_PRIVATE;
   else return T_OTHER;
 }
 

@@ -29,13 +29,23 @@
 
 typedef enum {
   ST_BAD,
+  ST_MENU,
   ST_LOGIN,
-  ST_PASSWD,
+  ST_REGISTER,
   ST_CHAT,
-  ST_NEWUSR,
-  ST_NEWPWD,
-  ST_MENU
+  ST_PRIVATE
 } status_st;
+
+typedef enum {
+  T_QUIT,
+  T_HELP,
+  T_WHO,
+  T_LOGOUT,
+  T_LOGIN,
+  T_REGISTER,
+  T_PRIVATE,
+  T_OTHER
+} token_t;
 
 typedef struct messagenode {
   char *message;
@@ -54,16 +64,6 @@ typedef struct node {
   struct node *link;
 } NODE;
 
-typedef enum {
-  T_QUIT,
-  T_HELP,
-  T_LOGIN,
-  T_LOGOUT,
-  T_NEW,
-  T_WHO,
-  T_OTHER
-} token_t;
-
 void set_priority ();
 void init_database ();
 int init_socket (int port);
@@ -81,11 +81,11 @@ void free_obuf (NODE *nd);
 void read_stuff (int sock);
 void process_stuff (int sock);
 void remove_stuff (int sock);
-token_t lex_string (char line[]);
+token_t lex_string (char line[], char args[]);
 token_t special_check (char token[]);
 void exit_nicely ();
 int count_users ();
-void command_handler(NODE *user, token_t cmd);
+void command_handler(NODE *user, token_t cmd, char *args);
 void print_help(NODE *user);
-void check_username (status_st status, NODE *p, char username[]);
-void check_password (status_st status, NODE *user, char password[]);
+void check_credentials (status_st status, NODE *p, char credentials[]);
+void private_message (NODE *user, char argument[]);

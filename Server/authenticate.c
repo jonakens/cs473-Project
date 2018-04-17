@@ -3,23 +3,26 @@
 #define MAX     20
 #define MIN      2
 
+extern NODE *head;
+
+void parse_args (char credentials[], char name[], char pass[]);
 int find_user (char username[]);
+void check_password (status_st status, NODE *user, char password[]);
 char *validate_password (char *username, char key[]);
 char *make_password(char *username, char key[]);
 
 extern sqlite3 *db;
 
-void check_username (status_st status, NODE *user, char username[])
+void check_credentials (status_st status, NODE *user, char credentials[])
 {
+  char username[K], password[K];
+  parse_args(credentials, username, password);
+
   char msg[K];
   memset(msg, 0, K);
 
   if (strlen(username) < MIN || strlen(username) > MAX) {
-    if (status == ST_LOGIN) {
-      sprintf(msg, "[Invalid Length] Enter 2-20 Characters!\nUsername: ");
-    } else {
-      sprintf(msg, "[Invalid Length] Enter 2-20 Characters!\nNew Username: ");
-    }
+    sprintf(msg, "[Invalid Username Length] Enter 2-20 Characters!\n");
     send_to_obuf(user, msg);
     return;
   }
@@ -27,11 +30,7 @@ void check_username (status_st status, NODE *user, char username[])
   int i;
   for(i = 0; username[i] != '\0'; i++){
     if(!isalnum(username[i]) || isupper(username[i])) {
-      if (status == ST_LOGIN) {
-        sprintf(msg, "[Invalid Combination] Lowercase Alphanumeric Only!\nUsername: ");
-      } else {
-        sprintf(msg, "[Invalid Combination] Lowercase Alphanumeric Only!\nNew Username: ");
-      }
+      sprintf(msg, "[Invalid Username Combination] Lowercase Alphanumeric Only!\n");
       send_to_obuf(user, msg);
       return;
     }
@@ -40,25 +39,69 @@ void check_username (status_st status, NODE *user, char username[])
   if (find_user(username)) {
     if (status == ST_LOGIN) {
       user->name = strdup(username);
-      sprintf(msg, "Password: ");
-      send_to_obuf(user, msg);
-      user->status = ST_PASSWD;
-    } else if (status == ST_NEWUSR) {
-      sprintf(msg, "[User Already Exists]\nNew Username: ");
+      check_password(status, user, password);
+    } else if (status == ST_REGISTER) {
+      user->status = ST_MENU;
+      sprintf(msg, "[Username Already Exists]\n");
       send_to_obuf(user, msg);
     }
   } else {
     if (status == ST_LOGIN) {
-      sprintf(msg, "[User Not Found]\nUsername: ");
+      user->status = ST_MENU;
+      sprintf(msg, "[Username Not Found]\n");
       send_to_obuf(user, msg);
-    } else if (status == ST_NEWUSR) {
+    } else if (status == ST_REGISTER) {
       user->name = strdup(username);
-      sprintf(msg, "New Password: ");
-      send_to_obuf(user, msg);
-      user->status = ST_NEWPWD;
+      check_password(status, user, password);
     }
   }
   return;
+}
+
+void private_message (NODE *user, char argument[])
+{
+  user->status = ST_CHAT;
+  char username[K], message[K];
+  parse_args(argument, username, message);
+
+  NODE *p;
+  for (p = head; p != NULL; p = p->link) {
+    if (p->status != ST_CHAT) continue;
+    if (strcmp(p->name, username) == 0) {
+      char line[LONGSTR];
+      sprintf(line, "[PM From %s] %s\n", user->name, message);
+      send_to_obuf(p, line);
+    }
+  }
+}
+
+void parse_args (char credentials[], char name[], char pass[])
+{
+  int lp = 0, ap = 0;
+  char c = credentials[lp];
+
+  while (c == ' ' || c == '\t') c = credentials[++lp];
+
+  while (c != '\0' && c != ' ' && c != '\t') {
+    name[ap++] = c;
+    c = credentials[++lp];
+  }
+
+  name[ap] = '\0';
+  ap = 0;
+  if (c == '\0') {
+    pass[ap] = '\0';
+    return;
+  }
+
+  while (c == ' ' || c == '\t') c = credentials[++lp];
+
+  while (c != '\0') {
+    pass[ap++] = c;
+    c = credentials[++lp];
+  }
+
+  pass[ap] = '\0';
 }
 
 int find_user (char username[])
@@ -90,11 +133,7 @@ void check_password (status_st status, NODE *user, char password[])
   memset(msg, 0, LONGSTR);
 
   if (strlen(password) < MIN || strlen(password) > MAX) {
-    if (status == ST_PASSWD) {
-      sprintf(msg, "[Invalid Length] Enter 2-20 Characters!\nPassword: ");
-    } else {
-      sprintf(msg, "[Invalid Length] Enter 2-20 Characters!\nNew Password: ");
-    }
+    sprintf(msg, "[Invalid Password Length] Enter 2-20 Characters!\n");
     send_to_obuf(user, msg);
     return;
   }
@@ -102,18 +141,14 @@ void check_password (status_st status, NODE *user, char password[])
   int i;
   for(i = 0; password[i] != '\0'; i++){
     if(!isalnum(password[i])) {
-      if (status == ST_PASSWD) {
-        sprintf(msg, "[Invalid Combination] Alphanumeric Only!\nPassword: ");
-      } else {
-        sprintf(msg, "[Invalid Combination] Alphanumeric Only!\nNew Password: ");
-      }
+      sprintf(msg, "[Invalid Password Combination] Alphanumeric Only!\n");
       send_to_obuf(user, msg);
       return;
     }
   }
 
   switch (status) {
-    case ST_PASSWD:
+    case ST_LOGIN:
       if ((newpasshash = validate_password(user->name, password)) != NULL) {
         user->status = ST_CHAT;
         user->hash = strdup(newpasshash);
@@ -121,11 +156,12 @@ void check_password (status_st status, NODE *user, char password[])
         sprintf(msg, "Welcome, %s\n", user->name);
         send_to_obuf(user, msg);
       } else {
-        sprintf(msg, "[Password does not match]\nPassword: ");
+        user->status = ST_MENU;
+        sprintf(msg, "[Password does not match]\n");
         send_to_obuf(user, msg);
       }
       return;
-    case ST_NEWPWD:
+    case ST_REGISTER:
       if ((newpasshash = make_password(user->name, password)) != NULL){
         user->status = ST_CHAT;
         user->hash = strdup(newpasshash);
@@ -133,8 +169,8 @@ void check_password (status_st status, NODE *user, char password[])
         sprintf(msg, "[Account created successfully]\nWelcome, %s\n", user->name);
         send_to_obuf(user, msg);
       } else {
-        user->status = ST_NEWUSR;
-        sprintf(msg, "[Problem creating new account]\nNew Username: ");
+        user->status = ST_MENU;
+        sprintf(msg, "[Problem creating new account]\n");
         send_to_obuf(user, msg);
       }
       return;
