@@ -5,7 +5,7 @@
 
 extern NODE *head;
 
-void parse_args (char credentials[], char name[], char pass[]);
+void parse_args (status_st stat, char line[], char arg1[], char arg2[], char arg3[]);
 int find_user (char username[]);
 void check_password (status_st status, NODE *user, char password[]);
 char *validate_password (char *username, char key[]);
@@ -16,7 +16,7 @@ extern sqlite3 *db;
 void check_credentials (status_st status, NODE *user, char credentials[])
 {
   char username[K], password[K];
-  parse_args(credentials, username, password);
+  parse_args(status, credentials, username, password, NULL);
 
   char msg[K];
   memset(msg, 0, K);
@@ -64,9 +64,9 @@ void check_credentials (status_st status, NODE *user, char credentials[])
 
 void private_message (NODE *user, char argument[])
 {
-  user->status = ST_CHAT;
   char username[K], message[K], line[LONGSTR];
-  parse_args(argument, username, message);
+  parse_args(user->status, argument, username, message, NULL);
+  user->status = ST_CHAT;
   int flag = 0;
 
   NODE *p;
@@ -89,33 +89,40 @@ void private_message (NODE *user, char argument[])
   }
 }
 
-void parse_args (char credentials[], char name[], char pass[])
+void parse_args (status_st stat, char line[], char arg1[], char arg2[], char arg3[])
 {
   int lp = 0, ap = 0;
-  char c = credentials[lp];
+  char c = line[lp];
 
-  while (c == ' ' || c == '\t') c = credentials[++lp];
+  while (c == ' ' || c == '\t') c = line[++lp];
 
   while (c != '\0' && c != ' ' && c != '\t') {
-    name[ap++] = c;
-    c = credentials[++lp];
+    arg1[ap++] = c;
+    c = line[++lp];
   }
 
-  name[ap] = '\0';
+  arg1[ap] = '\0';
   ap = 0;
   if (c == '\0') {
-    pass[ap] = '\0';
+    arg2[ap] = '\0';
     return;
   }
 
-  while (c == ' ' || c == '\t') c = credentials[++lp];
+  while (c == ' ' || c == '\t') c = line[++lp];
 
-  while (c != '\0') {
-    pass[ap++] = c;
-    c = credentials[++lp];
+  char delim;
+  if (stat == ST_PRIVATE) {
+    delim = "\0";
+  } else {
+    delim = " \t";
   }
 
-  pass[ap] = '\0';
+  while (strchr(delim, c) == NULL) {
+    arg2[ap++] = c;
+    c = line[++lp];
+  }
+
+  arg2[ap] = '\0';
 }
 
 int find_user (char username[])

@@ -213,7 +213,7 @@ void send_to_ibuf (NODE *target, char message[])
 }
 
 /*
-  message flusher
+  flush message
   send the message to the client fd
 */
 void write_stuff (int sock)
@@ -367,16 +367,16 @@ void read_stuff (int sock)
         continue;
       }
 
-      if (buffer[nbytes-1] == '\n') {
-        buffer[nbytes-1] = '\0';
+      if (buffer[nbytes-1] == '\n') {            //check if line ends with newline
+        buffer[nbytes-1] = '\0';                 //if it does, replace with null bybte
       } else {
-        buffer[nbytes] = '\0';
+        buffer[nbytes] = '\0';                   //otherwise just null terminate
       }
 
-      if (strlen(buffer) == 0) {
-        continue;
+      if (strlen(buffer) == 0) {                 //check if line is empty after null termination
+        continue;                                //if it is, then just ignore and move along
       } else {
-        send_to_ibuf(p, buffer);
+        send_to_ibuf(p, buffer);                //otherwise, pass is along to the input buffer
       }
     }
   }

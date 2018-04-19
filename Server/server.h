@@ -64,6 +64,12 @@ typedef struct node {
   struct node *link;
 } NODE;
 
+typedef struct group {
+  char *name;
+  NODE *memlist;
+  struct group *link;
+} GROUP;
+
 void set_priority ();
 void init_database ();
 int init_socket (int port);
