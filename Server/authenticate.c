@@ -24,6 +24,7 @@ void check_credentials (status_st status, NODE *user, char credentials[])
   if (strlen(username) < MIN || strlen(username) > MAX) {
     sprintf(msg, "[Invalid Username Length] Enter 2-20 Characters!\n");
     send_to_obuf(user, msg);
+    user->status = ST_MENU;
     return;
   }
 
@@ -32,46 +33,59 @@ void check_credentials (status_st status, NODE *user, char credentials[])
     if(!isalnum(username[i]) || isupper(username[i])) {
       sprintf(msg, "[Invalid Username Combination] Lowercase Alphanumeric Only!\n");
       send_to_obuf(user, msg);
+      user->status = ST_MENU;
       return;
     }
   }
 
-  if (find_user(username)) {
-    if (status == ST_LOGIN) {
-      user->name = strdup(username);
-      check_password(status, user, password);
-    } else if (status == ST_REGISTER) {
-      user->status = ST_MENU;
-      sprintf(msg, "[Username Already Exists]\n");
-      send_to_obuf(user, msg);
-    }
-  } else {
-    if (status == ST_LOGIN) {
-      user->status = ST_MENU;
-      sprintf(msg, "[Username Not Found]\n");
-      send_to_obuf(user, msg);
-    } else if (status == ST_REGISTER) {
-      user->name = strdup(username);
-      check_password(status, user, password);
-    }
+  switch (status) {
+    case ST_LOGIN:
+      if (find_user(username)) {
+        user->name = strdup(username);
+        check_password(status, user, password);
+      } else {
+        user->status = ST_MENU;
+        sprintf(msg, "[Username Not Found]\n");
+        send_to_obuf(user, msg);
+      }
+      return;
+    case ST_REGISTER:
+      if (find_user(username)) {
+        user->status = ST_MENU;
+        sprintf(msg, "[Username Already Exists]\n");
+        send_to_obuf(user, msg);
+      } else {
+        user->name = strdup(username);
+        check_password(status, user, password);
+      }
+      return;
   }
-  return;
 }
 
 void private_message (NODE *user, char argument[])
 {
   user->status = ST_CHAT;
-  char username[K], message[K];
+  char username[K], message[K], line[LONGSTR];
   parse_args(argument, username, message);
+  int flag = 0;
 
   NODE *p;
   for (p = head; p != NULL; p = p->link) {
     if (p->status != ST_CHAT) continue;
     if (strcmp(p->name, username) == 0) {
-      char line[LONGSTR];
-      sprintf(line, "[PM From %s] %s\n", user->name, message);
+      flag = 1; //report user found
+      sprintf(line, "[Private Message From %s] %s\n", user->name, message);
       send_to_obuf(p, line);
     }
+  }
+
+  memset(line, 0, LONGSTR);
+  if (flag == 0) {
+    sprintf(line, "[Receiver Offline]\n");
+    send_to_obuf(user, line);
+  } else {
+    sprintf(line, "[Message Sent]\n");
+    send_to_obuf(user, line);
   }
 }
 
@@ -135,6 +149,7 @@ void check_password (status_st status, NODE *user, char password[])
   if (strlen(password) < MIN || strlen(password) > MAX) {
     sprintf(msg, "[Invalid Password Length] Enter 2-20 Characters!\n");
     send_to_obuf(user, msg);
+    user->status = ST_MENU;
     return;
   }
 
@@ -143,6 +158,7 @@ void check_password (status_st status, NODE *user, char password[])
     if(!isalnum(password[i])) {
       sprintf(msg, "[Invalid Password Combination] Alphanumeric Only!\n");
       send_to_obuf(user, msg);
+      user->status = ST_MENU;
       return;
     }
   }

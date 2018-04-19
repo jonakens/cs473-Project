@@ -66,8 +66,10 @@ void command_handler(NODE *user, token_t cmd, char *args)
 void who_is_online (NODE *user)
 {
   NODE *p;
-  char list[K] = "\n";
+  char list[LONGSTR];
   char person[K];
+
+  memset(list, 0, LONGSTR);
 
   for (p = head; p != NULL; p = p->link) {
     if (p->status == ST_CHAT) {
