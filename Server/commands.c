@@ -5,7 +5,7 @@ extern GROUP *head;
 /*
   handle all the execution of commands
 */
-void command_handler(NODE *user, token_t cmd, char *args)
+void command_handler(GROUP *group, NODE *user, token_t cmd, char *args)
 {
   char msg[LONGSTR];
   memset(msg, 0, LONGSTR);
@@ -16,17 +16,32 @@ void command_handler(NODE *user, token_t cmd, char *args)
       return;
     case T_HELP:
       print_help(user); //call the function to print help message
-      return;
+      print_prompt(group, user);
+			return;
     case T_WHO:
-      //get list of online users
+      //get list of online users in the whole server
       //command only work for online (logged in) users
       if (user->status != ST_CHAT) {
         sprintf(msg, "[You are not logged in]\n");
         send_to_obuf(user, msg);
+				print_prompt(group, user);
         return;
       }
-      who_is_online(user);
+      who_is_online(NULL, user);
+			print_prompt(group, user);
       return;
+		case T_LOOK:
+			//get list of online users in the group
+			//command only work for online (logged in) users
+			if (user->status != ST_CHAT) {
+				sprintf(msg, "[You are not logged in]\n");
+				send_to_obuf(user, msg);
+				print_prompt(group, user);
+				return;
+			}
+			who_is_online(group, user);
+			print_prompt(group, user);
+			return;
     case T_LOGOUT:
       //go from any chat room to the main menu state
       //command only work for online (logged in) users
@@ -36,19 +51,27 @@ void command_handler(NODE *user, token_t cmd, char *args)
         sprintf(msg, "[You are not logged in]\n");
         send_to_obuf(user, msg);
       }
+			print_prompt(group, user);
       return;
     case T_LOGIN:
       //get the user into the general chat room
       //cannot login when already logged in
       //the command has arguments which is kept in the user node
       //for later processing stage after the state changed to ST_LOGIN
-      if (user->status == ST_CHAT) {
-        sprintf(msg, "[Already logged in, please first logout]\n");
-        send_to_obuf(user, msg);
-      } else {
-        user->status = ST_LOGIN;
-        send_to_ibuf(user, args);
-      }
+			if (strlen(args) > 0) {
+	      if (user->status == ST_CHAT) {
+	        sprintf(msg, "[Already logged in, please first logout]\n");
+	        send_to_obuf(user, msg);
+					print_prompt(group, user);
+	      } else {
+	        user->status = ST_LOGIN;
+	        send_to_ibuf(user, args);
+	      }
+			} else {
+				sprintf(msg, "[No argument]\n");
+				send_to_obuf(user, msg);
+				print_prompt(group, user);
+			}
       return;
     case T_REGISTER:
       //creating new user Account
@@ -56,55 +79,83 @@ void command_handler(NODE *user, token_t cmd, char *args)
       //has to be in the menu ST_MENU state to make one
       //the command has arguments which is kept in the user node
       //for later processing stage after the state changed to ST_REGISTER
-      if (user->status == ST_CHAT) {
-        sprintf(msg, "[Unable to create new account while logging in, please logout]\n");
-        send_to_obuf(user, msg);
-      } else {
-        user->status = ST_REGISTER;
-        send_to_ibuf(user, args);
-      }
+      if (strlen(args) > 0) {
+	      if (user->status == ST_CHAT) {
+	        sprintf(msg, "[Unable to create new account while logging in, please logout]\n");
+	        send_to_obuf(user, msg);
+					print_prompt(group, user);
+	      } else {
+	        user->status = ST_REGISTER;
+	        send_to_ibuf(user, args);
+	      }
+			} else {
+				sprintf(msg, "[No argument]\n");
+				send_to_obuf(user, msg);
+				print_prompt(group, user);
+			}
       return;
     case T_PASSWD:
       //change the user password
       //command only work for online (logged in) users
       //the command has arguments which is kept in the user node
       //for later processing stage after the state changed to ST_PASSWD
-      if (user->status != ST_CHAT) {
-        sprintf(msg, "[You are not logged in]\n");
-        send_to_obuf(user, msg);
-        return;
-      }
+      if (strlen(args) > 0) {
+				if (user->status != ST_CHAT) {
+	        sprintf(msg, "[You are not logged in]\n");
+	        send_to_obuf(user, msg);
+					print_prompt(group, user);
+	        return;
+	      }
 
-      user->status = ST_PASSWD;
-      send_to_ibuf(user, args);
+	      user->status = ST_PASSWD;
+	      send_to_ibuf(user, args);
+		  } else {
+				sprintf(msg, "[No argument]\n");
+				send_to_obuf(user, msg);
+				print_prompt(group, user);
+			}
       return;
     case T_PRIVATE:
       //send a private message to a users
       //command only work for online (logged in) users
       //the command has arguments which is kept in the user node
       //for later processing stage after the state changed to ST_PRIVATE
-      if (user->status != ST_CHAT) {
-        sprintf(msg, "[You are not logged in]\n");
-        send_to_obuf(user, msg);
-        return;
-      }
+      if (strlen(args) > 0) {
+				if (user->status != ST_CHAT) {
+	        sprintf(msg, "[You are not logged in]\n");
+	        send_to_obuf(user, msg);
+					print_prompt(group, user);
+	        return;
+	      }
 
-      user->status = ST_PRIVATE;
-      send_to_ibuf(user, args);
+	      user->status = ST_PRIVATE;
+	      send_to_ibuf(user, args);
+			} else {
+				sprintf(msg, "[No argument]\n");
+				send_to_obuf(user, msg);
+				print_prompt(group, user);
+			}
       return;
     case T_GROUP:
       //make a group if not already exist
       //command only work for online (logged in) users
       //the command has arguments which is kept in the user node
       //for later processing stage after the state changed to ST_GROUP
-      if (user->status != ST_CHAT) {
-        sprintf(msg, "[You are not logged in]\n");
-        send_to_obuf(user, msg);
-        return;
-      }
+      if (strlen(args) > 0) {
+				if (user->status != ST_CHAT) {
+	        sprintf(msg, "[You are not logged in]\n");
+	        send_to_obuf(user, msg);
+					print_prompt(group, user);
+	        return;
+	      }
 
-      user->status = ST_GROUP;
-      send_to_ibuf(user, args);
+	      user->status = ST_GROUP;
+	      send_to_ibuf(user, args);
+			} else {
+				sprintf(msg, "[No argument]\n");
+				send_to_obuf(user, msg);
+				print_prompt(group, user);
+			}
       return;
     case T_EXIT:
       //exit from a group and go to general room
@@ -116,11 +167,12 @@ void command_handler(NODE *user, token_t cmd, char *args)
       if (user->status != ST_CHAT) {
         sprintf(msg, "[You are not logged in]\n");
         send_to_obuf(user, msg);
+				print_prompt(group, user);
         return;
       }
 
       user->status = ST_EXIT;
-      send_to_ibuf(user, args);
+      send_to_ibuf(user, "general");
       return;
   }
 }
@@ -130,17 +182,18 @@ void command_handler(NODE *user, token_t cmd, char *args)
 */
 void print_help(NODE *user)
 {
-  char help_message[K] = "You can use the following commands:\n\
-  /login    <username> <password>                        Enter the general chat room.\n\
-  /logout                                                Logout and go to main menu.\n\
-  /register <username> <password>                        Make a new account and login.\n\
-  /passwd   <username> <current password> <new password> Change the password for <username>.\n\
-  /private  <username> <message>                         Send a private message to <username>.\n\
-  /group    <groupname>                                  Move to a different room.\n\
-  /exit                                                  Exit a chat room and to general chat room.\n\
-  /who                                                   List online user.\n\
-  /help                                                  Print this message.\n\
-  /stop                                                  Close the connection to the chat server.\n";
+  char help_message[K] = "[Command References]\n\
+  Login to chat room         /login <uname> <pwd>\n\
+  Logout from chat room      /logout\n\
+  Register new account       /register <uname> <pwd>\n\
+  Change password            /passwd <uname> <current pwd> <new pwd>\n\
+  Send private message       /private <uname> <msg>\n\
+  Make new group             /group <gname>\n\
+  Exit group                 /exit\n\
+  List all online users      /who\n\
+  List online group members  /look\n\
+  Print help message         /help\n\
+  Disconnect from server     /stop\n";
 
   send_to_obuf(user, help_message);
 }
@@ -148,24 +201,33 @@ void print_help(NODE *user)
 /*
   finding out who are online
 */
-void who_is_online (NODE *user)
+void who_is_online (GROUP *group, NODE *user)
 {
-  GROUP *g;
-  NODE *p;
   char list[LONGSTR];
   char person[K];
-
   memset(list, 0, LONGSTR);
 
-  for (g = head; g != NULL; g = g->link) {
-    for (p = g->memlist; p != NULL; p = p->link) {
-      if (p->status == ST_CHAT) {
-        memset(person, 0, K);
-        sprintf(person, "[%s: %s]\n", p->name, p->addr);
-        strcat(list,person);
-      }
-    }
-  }
+	GROUP *g;
+	NODE *p;
+	if (group != NULL) { //online for specific group
+		for (p = group->memlist; p != NULL; p = p->link) {
+			if (p->status == ST_CHAT) {
+				memset(person, 0, K);
+				sprintf(person, "[%s: %s]\n", p->name, p->addr);
+				strcat(list,person);
+			}
+		}
+	} else { //online for the whole chat server
+		for (g = head; g != NULL; g = g->link) {
+			for (p = g->memlist; p != NULL; p = p->link) {
+				if (p->status == ST_CHAT) {
+					memset(person, 0, K);
+					sprintf(person, "[%s: %s]\n", p->name, p->addr);
+					strcat(list,person);
+				}
+			}
+		}
+	}
 
   send_to_obuf(user, list);
 }
@@ -189,8 +251,9 @@ void private_message (NODE *user, char argument[])
       if (p->status != ST_CHAT) continue;
       if (strcmp(p->name, username) == 0) {
         flag = 1; //report user found
-        sprintf(line, "[Private message from %s] %s\n", user->name, message);
+        sprintf(line, "\n[Private] [%s: %s] %s\n", user->name, user->addr, message);
         send_to_obuf(p, line);
+				print_prompt(g, p);
       }
     }
   }

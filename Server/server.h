@@ -43,6 +43,7 @@ typedef enum {
   T_STOP,
   T_HELP,
   T_WHO,
+	T_LOOK,
   T_LOGOUT,
   T_LOGIN,
   T_REGISTER,
@@ -105,9 +106,9 @@ void exit_nicely ();
 int count_users ();
 void print_prompt (GROUP *grp, NODE *usr);
 
-void command_handler(NODE *user, token_t cmd, char *args);
+void command_handler(GROUP *group, NODE *user, token_t cmd, char *args);
 void print_help(NODE *user);
-void who_is_online (NODE *user);
+void who_is_online (GROUP *group, NODE *user);
 void private_message (NODE *user, char argument[]);
 GROUP *manage_group (GROUP *gnode, NODE *user, char argument[]);
 

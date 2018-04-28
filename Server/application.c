@@ -286,83 +286,46 @@ void process_stuff (int sock)
       //procedure, if no argument needed, null is passed
       switch((tok = lex_string(buffer, msg))) {
         case T_STOP: //stop the connection to the server
-          command_handler(p, tok, NULL);
+          command_handler(NULL, p, tok, NULL);
           continue;
         case T_HELP:
           //call the function to print help message
-          command_handler(p, tok, NULL);
-          print_prompt(g, p);
+          command_handler(g, p, tok, NULL);
           continue;
         case T_WHO:
-          //get list of online users
-          command_handler(p, tok, NULL);
-          print_prompt(g, p);
+          //get list of online users in the whole server
+          command_handler(g, p, tok, NULL);
           continue;
+				case T_LOOK:
+					command_handler(g, p, tok, NULL);
+					continue;
         case T_LOGOUT:
           //go from any chat room to the main menu state
-          command_handler(p, tok, NULL);
-          print_prompt(g, p);
+          command_handler(g, p, tok, NULL);
           continue;
         case T_LOGIN:
           //get the user into the general chat room
-          if (strlen(msg) > 0) {
-            command_handler(p, tok, msg);
-          } else {
-            memset(msg, 0, LONGSTR);
-            sprintf(msg, "[No argument]\n");
-            send_to_obuf(p, msg);
-            print_prompt(g, p);
-          }
+          command_handler(g, p, tok, msg);
           continue;
         case T_REGISTER:
           //creating new user Account
-          if (strlen(msg) > 0) {
-            command_handler(p, tok, msg);
-          } else {
-            memset(msg, 0, LONGSTR);
-            sprintf(msg, "[No argument]\n");
-            send_to_obuf(p, msg);
-            print_prompt(g, p);
-          }
+					command_handler(g, p, tok, msg);
           continue;
         case T_PASSWD:
           //change the user password
-          if (strlen(msg) > 0) {
-            command_handler(p, tok, msg);
-          } else {
-            memset(msg, 0, LONGSTR);
-            sprintf(msg, "[No argument]\n");
-            send_to_obuf(p, msg);
-            print_prompt(g, p);
-          }
+          command_handler(g, p, tok, msg);
           continue;
         case T_PRIVATE:
           //send a private message to a users
-          if (strlen(msg) > 0) {
-            command_handler(p, tok, msg);
-          } else {
-            memset(msg, 0, LONGSTR);
-            sprintf(msg, "[No argument]\n");
-            send_to_obuf(p, msg);
-            print_prompt(g, p);
-          }
+          command_handler(g, p, tok, msg);
           continue;
         case T_GROUP:
           //make a group if not already exist
-          if (strlen(msg) > 0) {
-            command_handler(p, tok, msg);
-          } else {
-            memset(msg, 0, LONGSTR);
-            sprintf(msg, "[No argument]\n");
-            send_to_obuf(p, msg);
-            print_prompt(g, p);
-          }
+          command_handler(g, p, tok, msg);
           continue;
         case T_EXIT:
           //exit from a group and go to general room
-          memset(msg, 0, LONGSTR);
-          sprintf(msg, "general");
-          command_handler(p, tok, msg);
+          command_handler(g, p, tok, msg);
           continue;
         case T_OTHER:
           //no special token detected
@@ -419,10 +382,11 @@ void process_stuff (int sock)
           //the message will only be sent to that group
           memset(msg, 0, LONGSTR);
           //here the message is padded with the sender information
-          sprintf(msg, "[%s: %s] %s\n", p->name, p->addr, buffer);
+          sprintf(msg, "\n[%s: %s] %s\n", p->name, p->addr, buffer);
           for(q = g->memlist; q != NULL; q = q->link) {
             if(q->status != ST_CHAT || p == q) continue;
             send_to_obuf(q, msg);
+						print_prompt(g, q);
           }
           print_prompt(g, p);
           continue;
@@ -670,6 +634,7 @@ token_t lex_string (char line[], char args[])
     case T_STOP: return tok;
     case T_HELP: return tok;
     case T_WHO: return tok;
+		case T_LOOK: return tok;
     case T_EXIT: return tok;
     case T_LOGOUT: return tok;
     case T_LOGIN:
@@ -706,6 +671,7 @@ token_t special_check (char token[])
   if (strcmp(token, "/stop") == 0) return T_STOP;
   else if (strcmp(token, "/help") == 0) return T_HELP;
   else if (strcmp(token, "/who") == 0) return T_WHO;
+	else if (strcmp(token, "/look") == 0) return T_LOOK;
   else if (strcmp(token, "/logout") == 0) return T_LOGOUT;
   else if (strcmp(token, "/login") == 0) return T_LOGIN;
   else if (strcmp(token, "/register") == 0) return T_REGISTER;
@@ -766,6 +732,10 @@ int count_users ()
   return n;
 }
 
+/*
+  print prompt based on user state (menu or chat)
+	or the current group for user (general or anything else)
+*/
 void print_prompt (GROUP *grp, NODE *usr)
 {
   char prompt[SHORTSTR];
