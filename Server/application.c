@@ -296,9 +296,9 @@ void process_stuff (int sock)
           //get list of online users in the whole server
           command_handler(g, p, tok, NULL);
           continue;
-				case T_LOOK:
-					command_handler(g, p, tok, NULL);
-					continue;
+        case T_LOOK:
+          command_handler(g, p, tok, NULL);
+          continue;
         case T_LOGOUT:
           //go from any chat room to the main menu state
           command_handler(g, p, tok, NULL);
@@ -309,7 +309,7 @@ void process_stuff (int sock)
           continue;
         case T_REGISTER:
           //creating new user Account
-					command_handler(g, p, tok, msg);
+          command_handler(g, p, tok, msg);
           continue;
         case T_PASSWD:
           //change the user password
@@ -386,7 +386,7 @@ void process_stuff (int sock)
           for(q = g->memlist; q != NULL; q = q->link) {
             if(q->status != ST_CHAT || p == q) continue;
             send_to_obuf(q, msg);
-						print_prompt(g, q);
+            print_prompt(g, q);
           }
           print_prompt(g, p);
           continue;
@@ -634,7 +634,7 @@ token_t lex_string (char line[], char args[])
     case T_STOP: return tok;
     case T_HELP: return tok;
     case T_WHO: return tok;
-		case T_LOOK: return tok;
+    case T_LOOK: return tok;
     case T_EXIT: return tok;
     case T_LOGOUT: return tok;
     case T_LOGIN:
@@ -671,7 +671,7 @@ token_t special_check (char token[])
   if (strcmp(token, "/stop") == 0) return T_STOP;
   else if (strcmp(token, "/help") == 0) return T_HELP;
   else if (strcmp(token, "/who") == 0) return T_WHO;
-	else if (strcmp(token, "/look") == 0) return T_LOOK;
+  else if (strcmp(token, "/look") == 0) return T_LOOK;
   else if (strcmp(token, "/logout") == 0) return T_LOGOUT;
   else if (strcmp(token, "/login") == 0) return T_LOGIN;
   else if (strcmp(token, "/register") == 0) return T_REGISTER;
