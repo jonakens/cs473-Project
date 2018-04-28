@@ -43,7 +43,7 @@ typedef enum {
   T_STOP,
   T_HELP,
   T_WHO,
-	T_LOOK,
+  T_LOOK,
   T_LOGOUT,
   T_LOGIN,
   T_REGISTER,
