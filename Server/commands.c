@@ -242,30 +242,36 @@ void private_message (NODE *user, char argument[])
   char username[K], message[K], line[LONGSTR];
   parse_args(user->status, argument, username, message, NULL);
   user->status = ST_CHAT;
-  int flag = 0;
-
-  GROUP *g;
+  
+	int msg_send = 0;
+  
+	GROUP *g;
   NODE *p;
-  for (g = head; g != NULL; g = g->link) {
+  
+	for (g = head; g != NULL; g = g->link) {
     for (p = g->memlist; p != NULL; p = p->link) {
       if (p->status != ST_CHAT) continue;
       if (strcmp(p->name, username) == 0) {
-        flag = 1; //report user found
-        sprintf(line, "\n[Private] [%s: %s] %s\n", user->name, user->addr, message);
-        send_to_obuf(p, line);
-        print_prompt(g, p);
+			  msg_send = 1;
+				if (p == user) { //if send message to the sender
+          sprintf(line, "[Private] [%s: %s] %s\n", user->name, user->addr, message);
+				  send_to_obuf(p, line);
+				} else { //if send message to other user
+          sprintf(line, "\n[Private] [%s: %s] %s\n", user->name, user->addr, message);
+				  send_to_obuf(p, line);
+          print_prompt(g, p);
+				}  
       }
     }
   }
 
-  memset(line, 0, LONGSTR);
-  if (flag == 0) {
-    sprintf(line, "[Receiver offline]\n");
-    send_to_obuf(user, line);
-  } else {
+	memset(line, 0, LONGSTR);
+	if (msg_send == 1) {
     sprintf(line, "[Message sent]\n");
-    send_to_obuf(user, line);
-  }
+	} else {
+    sprintf(line, "[Receiver not found]\n");
+	}
+	send_to_obuf(user, line);
 }
 
 /*
