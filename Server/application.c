@@ -734,7 +734,7 @@ int count_users ()
 
 /*
   print prompt based on user state (menu or chat)
-	or the current group for user (general or anything else)
+  or the current group for user (general or anything else)
 */
 void print_prompt (GROUP *grp, NODE *usr)
 {
