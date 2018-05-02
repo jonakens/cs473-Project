@@ -183,12 +183,13 @@ void command_handler(GROUP *group, NODE *user, token_t cmd, char *args)
 void print_help(NODE *user)
 {
   char help_message[K] = "[Command References]\n\
-  Login to chat room         /login <uname> <pwd>\n\
+  --- Description ---        -- cmd --   -- args --\n\
+  Login to chat room         /login      <uname> <pwd>\n\
   Logout from chat room      /logout\n\
-  Register new account       /register <uname> <pwd>\n\
-  Change password            /passwd <uname> <current pwd> <new pwd>\n\
-  Send private message       /private <uname> <msg>\n\
-  Make new group             /group <gname>\n\
+  Register new account       /register   <uname> <pwd>\n\
+  Change password            /passwd     <uname> <current pwd> <new pwd>\n\
+  Send private message       /private    <uname> <msg>\n\
+  Make new group             /group      <gname>\n\
   Exit group                 /exit\n\
   List all online users      /who\n\
   List online group members  /look\n\
@@ -242,36 +243,36 @@ void private_message (NODE *user, char argument[])
   char username[K], message[K], line[LONGSTR];
   parse_args(user->status, argument, username, message, NULL);
   user->status = ST_CHAT;
-
-  int msg_send = 0;
-
-  GROUP *g;
+  
+	int msg_send = 0;
+  
+	GROUP *g;
   NODE *p;
-
-  for (g = head; g != NULL; g = g->link) {
+  
+	for (g = head; g != NULL; g = g->link) {
     for (p = g->memlist; p != NULL; p = p->link) {
       if (p->status != ST_CHAT) continue;
       if (strcmp(p->name, username) == 0) {
-        msg_send = 1;
-        if (p == user) { //if send message to the sender
+			  msg_send = 1;
+				if (p == user) { //if send message to the sender
           sprintf(line, "[Private] [%s: %s] %s\n", user->name, user->addr, message);
-          send_to_obuf(p, line);
-        } else { //if send message to other user
+				  send_to_obuf(p, line);
+				} else { //if send message to other user
           sprintf(line, "\n[Private] [%s: %s] %s\n", user->name, user->addr, message);
-          send_to_obuf(p, line);
+				  send_to_obuf(p, line);
           print_prompt(g, p);
-        }
+				}  
       }
     }
   }
 
-  memset(line, 0, LONGSTR);
-  if (msg_send == 1) {
+	memset(line, 0, LONGSTR);
+	if (msg_send == 1) {
     sprintf(line, "[Message sent]\n");
-  } else {
+	} else {
     sprintf(line, "[Receiver not found]\n");
-  }
-  send_to_obuf(user, line);
+	}
+	send_to_obuf(user, line);
 }
 
 /*
