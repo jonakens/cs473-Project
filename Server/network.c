@@ -1,9 +1,9 @@
 #include "server.h"
 
 sqlite3 *db;
-NODE *head = NULL;
+GROUP *head = NULL;
 
-int main(int argc, char *argv[])
+int main (int argc, char *argv[])
 {
   signal(SIGINT, exit_nicely);     //call exit_nicely when the user close the program
   set_priority();                  //setting the priority for this program
@@ -16,22 +16,21 @@ int main(int argc, char *argv[])
     port = PORT;
   }
 
-  int s;                           //setting up the socket and port to listen
-  s = init_socket(port);
-  fprintf(stderr,"[Socket] %d\n[Port] %d\n", s, port);
+  int local_sock = init_socket(port); //setting up the socket and port to listen
+  fprintf(stderr,"[Socket] %d\n[Port] %d\n", local_sock, port);
 
-  time_t t = time(0);
+  time_t t = time(NULL);
 
   for(;;){
-    open_stuff(s);                 //the server is listening for connection and accept
-    write_stuff(s);                //flush output buffer to user
-    read_stuff(s);                 //getting user input
-    process_stuff(s);              //process the user input
-    remove_stuff(s);               //remove anyone with ST_BAD status
-    usleep(100000);
-    if(time(0) - t >= 30){
-      t = time(0);
-      fprintf(stderr,"%d users connected.\n", count_users());
+    open_stuff(local_sock);       //the server is listening for connection and accept
+    write_stuff();                //flush output buffer to user
+    read_stuff();                 //getting user input
+    process_stuff();              //process the user input
+    remove_stuff();               //remove anyone with ST_BAD status
+    usleep(10000);                //put the program to sleep to decrease cpu usage
+    if(time(NULL) - t >= 30){
+      t = time(NULL);
+      fprintf(stderr,"[%d users connected]\n", count_users());
     }
   }
 }
