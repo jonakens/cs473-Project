@@ -44,26 +44,23 @@ void parse_args (status_st stat, char line[], char arg1[], char arg2[], char arg
   char c = line[lp];
 
   //getting rid of whitespaces before first token
-  while (c == ' ' || c == '\t') c = line[++lp];
-
+  while (isspace(c)) c = line[++lp];
   //actually getting the first token
-  while (c != '\0' && c != ' ' && c != '\t') {
+  while (!isspace(c) && c != '\0') {
     arg1[ap++] = c;
     c = line[++lp];
   }
-
   arg1[ap] = '\0';
-  ap = 0;
+
   //check if there is anything else to read
-  //if no second argument is empty string
+  //if there is nothing more, make sure the
+  //next two args are null terminated
+  ap = 0;
   if (c == '\0') {
     arg2[ap] = '\0';
+    arg3[ap] = '\0';
     return;
   }
-
-  //there might be second argument
-  //getting rid of whitespaces before second token
-  while (c == ' ' || c == '\t') c = line[++lp];
 
   //decide what is the delim based on user status
   //bcs when status is private, message can have spaces
@@ -71,35 +68,33 @@ void parse_args (status_st stat, char line[], char arg1[], char arg2[], char arg
   if (stat == ST_PRIVATE) {
     strcpy(delim, "\0");
   } else {
-    strcpy(delim, " \t");
+    strcpy(delim, " \t\0");
   }
 
+  //getting rid of whitespaces before second token
+  while (isspace(c)) c = line[++lp];
   //actually getting the second token
   while (strchr(delim, c) == NULL) {
     arg2[ap++] = c;
     c = line[++lp];
   }
-
   arg2[ap] = '\0';
 
   //if the user status is passwd, try to get third argument
   if (stat == ST_PASSWD) {
     ap = 0;
-    //if no argument given the third argument is empty string
     if (c == '\0') {
       arg3[ap] = '\0';
       return;
     }
 
     //getting rid of whitespaces before third token
-    while (c == ' ' || c == '\t') c = line[++lp];
-
+    while (isspace(c)) c = line[++lp];
     //actually getting the third token
     while (strchr(delim, c) == NULL) {
       arg3[ap++] = c;
       c = line[++lp];
     }
-
     arg3[ap] = '\0';
   }
 }
@@ -107,17 +102,12 @@ void parse_args (status_st stat, char line[], char arg1[], char arg2[], char arg
 /*
   initiate checking username and password with the database
 */
-void check_credentials (status_st status, NODE *user, char credentials[])
+void check_credentials (NODE *user, char credentials[])
 {
-  char username[K], password[K];
-  parse_args(status, credentials, username, password, NULL);
+  char username[K], password[K], garbage[K];
+  parse_args(user->status, credentials, username, password, garbage);
 
-  if (check_length(user, username, "username") == 0) {
-    user->status = ST_MENU;
-    return;
-  }
-
-  if (check_combination(user, username, "username") == 0) {
+  if (check_length(user, username, "username") == 0 || check_combination(user, username, "username") == 0) {
     user->status = ST_MENU;
     return;
   }
@@ -125,11 +115,11 @@ void check_credentials (status_st status, NODE *user, char credentials[])
   char msg[K];
   memset(msg, 0, K);
 
-  switch (status) {
+  switch (user->status) {
     case ST_LOGIN:
       if (find_user(username)) {
         user->name = strdup(username);
-        check_password(status, user, password);
+        check_password(user, password);
       } else {
         user->status = ST_MENU;
         sprintf(msg, "[Username not found]\n");
@@ -143,7 +133,7 @@ void check_credentials (status_st status, NODE *user, char credentials[])
         send_to_obuf(user, msg);
       } else {
         user->name = strdup(username);
-        check_password(status, user, password);
+        check_password(user, password);
       }
       return;
   }
@@ -176,14 +166,9 @@ int find_user (char username[])
 /*
   check the password against the database
 */
-void check_password (status_st status, NODE *user, char password[])
+void check_password (NODE *user, char password[])
 {
-  if (check_length(user, password, "password") == 0) {
-    user->status = ST_MENU;
-    return;
-  }
-
-  if (check_combination(user, password, "password") == 0) {
+  if (check_length(user, password, "password") == 0 || check_combination(user, password, "password") == 0) {
     user->status = ST_MENU;
     return;
   }
@@ -192,7 +177,7 @@ void check_password (status_st status, NODE *user, char password[])
   char *newpasshash = NULL;
   memset(msg, 0, LONGSTR);
 
-  switch (status) {
+  switch (user->status) {
     case ST_LOGIN:
       if ((newpasshash = validate_password(user->name, password)) != NULL) {
         user->status = ST_CHAT;
@@ -225,7 +210,7 @@ void check_password (status_st status, NODE *user, char password[])
 /*
   actual password checking
 */
-char *validate_password (char *username, char key[])
+char *validate_password (char *username, char password[])
 {
   char sql[K];
   sprintf(sql, "SELECT * FROM account WHERE username='%s';", username);
@@ -242,7 +227,7 @@ char *validate_password (char *username, char key[])
     char *tok = (char *) sqlite3_column_text(res, 2);
     char *hash = strdup(tok);
     char *p[2];
-    p[0] = strtok(tok+1, "$");
+    p[0] = strtok(tok+1, "$"); //bcs str start with $, skip 1st char
     if (!p[0]) return NULL;
     p[1] = strtok(0, "$");
     if (!p[1]) return NULL;
@@ -251,9 +236,12 @@ char *validate_password (char *username, char key[])
     sprintf(salt, "$%s$%s$", p[0], p[1]);
 
     char *cipher = NULL;
-    cipher = (char *) crypt(key, salt);
+    cipher = (char *) crypt(password, salt);
 
-    if (strcmp(hash, cipher) == 0) return hash;
+    if (strcmp(hash, cipher) == 0) {
+      sqlite3_finalize(res);
+      return hash;
+    }
   }
 
   sqlite3_finalize(res);
@@ -263,20 +251,20 @@ char *validate_password (char *username, char key[])
 /*
   make new password hash and insert to the database
 */
-char *make_password(char *username, char key[])
+char *make_password(char *username, char password[])
 {
   char sugar[K];
   int i;
   srand(time(0));
   for (i = 0; i < 8; i++) {
-    sugar[i] = 'a' + (rand() % 26);
+    char c = 'a' + (rand() % 26);
+    sprintf(sugar+strlen(sugar), "%c", c);
   }
-  sugar[K-1] = '\0';
 
   char salt[K];
   sprintf(salt, "$6$%s$", sugar);
   char *cipher = NULL;
-  cipher = (char *) crypt(key, salt);
+  cipher = (char *) crypt(password, salt);
   char sql[K];
   sprintf(sql, "INSERT INTO account(username, hash) VALUES('%s', '%s');", username, cipher);
   sqlite3_stmt *res;
@@ -291,6 +279,7 @@ char *make_password(char *username, char key[])
     sqlite3_finalize(res);
     return cipher;
   } else {
+    sqlite3_finalize(res);
     return NULL;
   }
 }
@@ -303,32 +292,17 @@ void change_password (NODE *user, char credentials[])
   char username[K], oldpass[K], newpass[K];
   parse_args(user->status, credentials, username, oldpass, newpass);
 
-  if (check_length(user, username, "username") == 0) {
+  if (check_length(user, username, "username") == 0 || check_combination(user, username, "username") == 0) {
     user->status = ST_CHAT;
     return;
   }
 
-  if (check_combination(user, username, "username") == 0) {
+  if (check_length(user, oldpass, "current password") == 0 || check_combination(user, oldpass, "current password") == 0) {
     user->status = ST_CHAT;
     return;
   }
 
-  if (check_length(user, oldpass, "current password") == 0) {
-    user->status = ST_CHAT;
-    return;
-  }
-
-  if (check_combination(user, oldpass, "current password") == 0) {
-    user->status = ST_CHAT;
-    return;
-  }
-
-  if (check_length(user, newpass, "new password") == 0) {
-    user->status = ST_CHAT;
-    return;
-  }
-
-  if (check_combination(user, newpass, "new password") == 0) {
+  if (check_length(user, newpass, "new password") == 0 || check_combination(user, newpass, "new password") == 0) {
     user->status = ST_CHAT;
     return;
   }
@@ -362,20 +336,20 @@ void change_password (NODE *user, char credentials[])
 /*
   make password change permanent by updating the database
 */
-int update_password (char *username, char key[])
+int update_password (char *username, char password[])
 {
   char sugar[K];
   int i;
   srand(time(0));
   for (i = 0; i < 8; i++) {
-    sugar[i] = 'a' + (rand() % 26);
+    char c = 'a' + (rand() % 26);
+    sprintf(sugar+strlen(sugar), "%c", c);
   }
-  sugar[K-1] = '\0';
 
   char salt[K];
   sprintf(salt, "$6$%s$", sugar);
   char *cipher = NULL;
-  cipher = (char *) crypt(key, salt);
+  cipher = (char *) crypt(password, salt);
   char sql[K];
   sprintf(sql, "UPDATE account SET hash='%s' WHERE username='%s';", cipher, username);
   sqlite3_stmt *res;
@@ -390,6 +364,7 @@ int update_password (char *username, char key[])
     sqlite3_finalize(res);
     return 1;
   } else {
+    sqlite3_finalize(res);
     return 0;
   }
 }
