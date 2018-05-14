@@ -254,12 +254,14 @@ char *validate_password (char *username, char password[])
 char *make_password(char *username, char password[])
 {
   char sugar[K];
+	memset(sugar, 0, K);
   int i;
   srand(time(0));
   for (i = 0; i < 8; i++) {
     char c = 'a' + (rand() % 26);
     sprintf(sugar+strlen(sugar), "%c", c);
   }
+	sugar[i] = '\0';
 
   char salt[K];
   sprintf(salt, "$6$%s$", sugar);
@@ -339,12 +341,14 @@ void change_password (NODE *user, char credentials[])
 int update_password (char *username, char password[])
 {
   char sugar[K];
+	memset(sugar, 0, K);
   int i;
   srand(time(0));
   for (i = 0; i < 8; i++) {
     char c = 'a' + (rand() % 26);
     sprintf(sugar+strlen(sugar), "%c", c);
   }
+	sugar[i] = '\0';
 
   char salt[K];
   sprintf(salt, "$6$%s$", sugar);

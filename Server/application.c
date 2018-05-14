@@ -271,13 +271,6 @@ void process_stuff ()
       strcpy(buffer, (curr_user->ibuf)->message); //retrieve the buffer from user ibuf
       remove_ibuf(curr_user); //remove the actual message node from the user node
 
-      //handle when user presses enter deliberately
-      //print prompt
-      if (strlen(buffer) == 0) {
-        print_prompt(group, curr_user);
-        continue;
-      }
-
       //parse the buffer to see if the user has written a special command
       //the command will call handler to execute the right
       //procedure, the lex_string function also fill in the
@@ -334,24 +327,30 @@ void process_stuff ()
           switch (curr_user->status) {
             case ST_MENU:
               //unknown command
-              sprintf(msg, "[Unknown command]\n");
-              send_to_obuf(curr_user, msg);
+              if (strlen(buffer) > 0) {
+                sprintf(msg, "[Unknown command]\n");
+                send_to_obuf(curr_user, msg);
+              }
               print_prompt(group, curr_user);
               continue;
             case ST_CHAT:
-              //not a command, just a string
-              //here the message is padded with the sender information
-              sprintf(msg, "\n[Message] %s (%s) says %s\n", curr_user->name, curr_user->addr, buffer);
-              //now distribute the message
-              for(target_user = group->member; target_user != NULL; target_user = target_user->link) {
-                if(target_user->status != ST_CHAT || target_user == curr_user) continue;
-                send_to_obuf(target_user, msg);
-                print_prompt(group, target_user);
+              if (strlen(buffer) > 0) {
+                //not a command, just a string
+                //here the message is padded with the sender information
+                sprintf(msg, "\n[Message] %s (%s) says %s\n", curr_user->name, curr_user->addr, buffer);
+                //now distribute the message
+                for(target_user = group->member; target_user != NULL; target_user = target_user->link) {
+                  if(target_user->status != ST_CHAT || target_user == curr_user) continue;
+                  send_to_obuf(target_user, msg);
+                  print_prompt(group, target_user);
+                }
               }
               print_prompt(group, curr_user);
               continue;
             case ST_ANSWER:
-              validate_answer(group, curr_user, buffer);
+              if (strlen(buffer) > 0) {
+                validate_answer(group, curr_user, buffer);
+              }
               continue;
           }
       }
